@@ -72,20 +72,33 @@ jobs:
           -scheme Runner \
           -configuration Release \
           -sdk iphoneos \
-          -archivePath $PWD/build/Runner.xcarchive \
+          -derivedDataPath ./build \
           CODE_SIGN_IDENTITY="-" \
           CODE_SIGNING_REQUIRED=YES \
           CODE_SIGNING_ALLOWED=YES \
           AD_HOC_CODE_SIGNING_ALLOWED=YES \
           | tee build.log
     
-    - name: Create IPA
+    - name: Find and Create IPA
       if: success()
       run: |
-        cd ios/build/Release-iphoneos
+        # Find the built app
+        find ios/build -name "Runner.app" -type d
+        
+        # Create IPA from the built app
+        APP_PATH=$(find ios/build -name "Runner.app" -type d | head -n 1)
+        if [ -z "$APP_PATH" ]; then
+          echo "Error: Runner.app not found!"
+          exit 1
+        fi
+        
+        echo "Found app at: $APP_PATH"
+        
+        # Create IPA
         mkdir -p Payload
-        cp -r Runner.app Payload/
-        zip -r ../../../FairPoint-adhoc.ipa Payload/
+        cp -r "$APP_PATH" Payload/
+        zip -r FairPoint-adhoc.ipa Payload/
+        rm -rf Payload
     
     - name: Upload IPA
       uses: actions/upload-artifact@v4
