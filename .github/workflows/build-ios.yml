@@ -1,0 +1,58 @@
+name: Build iOS App
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+    
+    - name: Flutter doctor
+      run: flutter doctor -v
+    
+    - name: Get dependencies
+      run: flutter pub get
+    
+    - name: Setup Firebase
+      run: |
+        # Firebase configuration should be in place
+        echo "Firebase config already in repository"
+    
+    - name: Pod install
+      run: |
+        cd ios
+        pod install
+    
+    - name: Build iOS (No Codesign)
+      run: |
+        flutter build ios --release --no-codesign
+    
+    - name: Archive IPA
+      if: success()
+      run: |
+        cd build/ios/iphoneos
+        mkdir -p Payload
+        cp -r Runner.app Payload/
+        zip -r FairPoint.ipa Payload/
+    
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: FairPoint-iOS
+        path: build/ios/iphoneos/FairPoint.ipa
+        retention-days: 30
