@@ -125,8 +125,9 @@ jobs:
         
         echo "Found Runner.app at: $APP_PATH"
         
-        # Create a dummy provisioning profile
-        cat > embedded.mobileprovision << 'PROVEOF'
+        # Create a dummy provisioning profile with ExpirationDate
+        EXPIRATION_DATE=$(date -u -v+1y +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -d "+1 year" +"%Y-%m-%dT%H:%M:%SZ")
+        cat > embedded.mobileprovision << PROVEOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
@@ -137,6 +138,8 @@ jobs:
             <array><string>DUMMYTEAM</string></array>
             <key>CreationDate</key>
             <date>2024-01-01T00:00:00Z</date>
+            <key>ExpirationDate</key>
+            <date>${EXPIRATION_DATE}</date>
             <key>Platform</key>
             <array><string>iOS</string></array>
             <key>DeveloperCertificates</key>
@@ -163,6 +166,8 @@ jobs:
         </dict>
         </plist>
         PROVEOF
+        
+        echo "Created provisioning profile with expiration: ${EXPIRATION_DATE}"
         
         # Create IPA manually
         mkdir -p Payload
