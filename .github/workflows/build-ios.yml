@@ -64,41 +64,64 @@ jobs:
         cd ios
         pod install
     
-    - name: Build iOS App
+    - name: Build iOS App with xcodebuild
       run: |
         cd ios
-        xcodebuild clean build \
+        
+        # Build the app
+        xcodebuild \
           -workspace Runner.xcworkspace \
           -scheme Runner \
           -configuration Release \
           -sdk iphoneos \
-          -derivedDataPath ./build \
+          -destination 'generic/platform=iOS' \
+          -archivePath $PWD/build/Runner.xcarchive \
+          archive \
           CODE_SIGN_IDENTITY="-" \
-          CODE_SIGNING_REQUIRED=YES \
-          CODE_SIGNING_ALLOWED=YES \
-          AD_HOC_CODE_SIGNING_ALLOWED=YES \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGNING_ALLOWED=NO \
           | tee build.log
-    
-    - name: Find and Create IPA
-      if: success()
-      run: |
-        # Find the built app
-        find ios/build -name "Runner.app" -type d
         
-        # Create IPA from the built app
-        APP_PATH=$(find ios/build -name "Runner.app" -type d | head -n 1)
-        if [ -z "$APP_PATH" ]; then
-          echo "Error: Runner.app not found!"
+        echo "Archive created at: $PWD/build/Runner.xcarchive"
+        ls -la $PWD/build/Runner.xcarchive/Products/Applications/ || echo "Applications folder not found"
+    
+    - name: Export IPA from Archive
+      run: |
+        cd ios
+        
+        # Check if Runner.app exists in archive
+        if [ ! -d "build/Runner.xcarchive/Products/Applications/Runner.app" ]; then
+          echo "ERROR: Runner.app not found in archive!"
+          find build -name "*.app" -type d
           exit 1
         fi
         
-        echo "Found app at: $APP_PATH"
-        
-        # Create IPA
+        # Create IPA manually
         mkdir -p Payload
-        cp -r "$APP_PATH" Payload/
-        zip -r FairPoint-adhoc.ipa Payload/
-        rm -rf Payload
+        cp -r build/Runner.xcarchive/Products/Applications/Runner.app Payload/
+        
+        # Verify Info.plist exists
+        if [ ! -f "Payload/Runner.app/Info.plist" ]; then
+          echo "ERROR: Info.plist not found in Runner.app!"
+          ls -la Payload/Runner.app/
+          exit 1
+        fi
+        
+        echo "Creating IPA..."
+        cd ..
+        zip -r FairPoint-adhoc.ipa ios/Payload/
+        
+        # Verify IPA size
+        IPA_SIZE=$(stat -f%z FairPoint-adhoc.ipa 2>/dev/null || stat -c%s FairPoint-adhoc.ipa)
+        echo "IPA size: $IPA_SIZE bytes"
+        
+        if [ "$IPA_SIZE" -lt 10000 ]; then
+          echo "ERROR: IPA is too small ($IPA_SIZE bytes)!"
+          exit 1
+        fi
+        
+        echo "IPA created successfully!"
+        rm -rf ios/Payload
     
     - name: Upload IPA
       uses: actions/upload-artifact@v4
