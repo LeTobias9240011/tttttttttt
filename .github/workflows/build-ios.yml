@@ -29,7 +29,79 @@ jobs:
     
     - name: Setup Firebase placeholder
       run: |
-        echo "Firebase config files should be added if needed"
+        # Create a dummy firebase_options.dart for CI builds
+        cat > lib/firebase_options.dart << 'EOF'
+// File generated for CI/CD builds
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+class DefaultFirebaseOptions {
+  static FirebaseOptions get currentPlatform {
+    if (kIsWeb) {
+      return web;
+    }
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return android;
+      case TargetPlatform.iOS:
+        return ios;
+      case TargetPlatform.macOS:
+        return macos;
+      case TargetPlatform.windows:
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for windows - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
+      case TargetPlatform.linux:
+        throw UnsupportedError(
+          'DefaultFirebaseOptions have not been configured for linux - '
+          'you can reconfigure this by running the FlutterFire CLI again.',
+        );
+      default:
+        throw UnsupportedError(
+          'DefaultFirebaseOptions are not supported for this platform.',
+        );
+    }
+  }
+
+  static const FirebaseOptions web = FirebaseOptions(
+    apiKey: 'AIzaSyDummy-WebKey-ForCIBuilds-NotReal',
+    appId: '1:123456789:web:abcdef',
+    messagingSenderId: '123456789',
+    projectId: 'fairpoint-demo',
+    authDomain: 'fairpoint-demo.firebaseapp.com',
+    storageBucket: 'fairpoint-demo.appspot.com',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyDummy-AndroidKey-ForCIBuilds-NotReal',
+    appId: '1:123456789:android:abcdef',
+    messagingSenderId: '123456789',
+    projectId: 'fairpoint-demo',
+    storageBucket: 'fairpoint-demo.appspot.com',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDummy-iOSKey-ForCIBuilds-NotReal',
+    appId: '1:123456789:ios:abcdef',
+    messagingSenderId: '123456789',
+    projectId: 'fairpoint-demo',
+    storageBucket: 'fairpoint-demo.appspot.com',
+    iosBundleId: 'com.fairpoint.fairpoint',
+  );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDummy-macOSKey-ForCIBuilds-NotReal',
+    appId: '1:123456789:macos:abcdef',
+    messagingSenderId: '123456789',
+    projectId: 'fairpoint-demo',
+    storageBucket: 'fairpoint-demo.appspot.com',
+    iosBundleId: 'com.fairpoint.fairpoint',
+  );
+}
+EOF
+        echo "✅ Created dummy firebase_options.dart for CI build"
         
     - name: Create dummy iOS certificate
       run: |
@@ -74,12 +146,17 @@ jobs:
           | tee ios/build.log
         
         echo "Build completed. Checking output..."
+        ls -la build/ios/Release-iphoneos/ || echo "Release-iphoneos directory not found"
         ls -la build/ios/iphoneos/ || echo "iphoneos directory not found"
     
     - name: Create IPA from Flutter build
       run: |
-        # Check if Runner.app exists
-        if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+        # Check if Runner.app exists (try both possible locations)
+        if [ -d "build/ios/Release-iphoneos/Runner.app" ]; then
+          APP_PATH="build/ios/Release-iphoneos/Runner.app"
+        elif [ -d "build/ios/iphoneos/Runner.app" ]; then
+          APP_PATH="build/ios/iphoneos/Runner.app"
+        else
           echo "ERROR: Runner.app not found!"
           echo "Searching for .app bundles..."
           find build -name "*.app" -type d 2>/dev/null || echo "No .app bundles found"
@@ -88,9 +165,11 @@ jobs:
           exit 1
         fi
         
+        echo "Found Runner.app at: $APP_PATH"
+        
         # Create IPA manually
         mkdir -p Payload
-        cp -r build/ios/iphoneos/Runner.app Payload/
+        cp -r "$APP_PATH" Payload/
         
         # Verify Info.plist exists
         if [ ! -f "Payload/Runner.app/Info.plist" ]; then
