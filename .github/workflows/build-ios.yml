@@ -125,9 +125,51 @@ jobs:
         
         echo "Found Runner.app at: $APP_PATH"
         
+        # Create a dummy provisioning profile
+        cat > embedded.mobileprovision << 'PROVEOF'
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>AppIDName</key>
+            <string>FairPoint</string>
+            <key>ApplicationIdentifierPrefix</key>
+            <array><string>DUMMYTEAM</string></array>
+            <key>CreationDate</key>
+            <date>2024-01-01T00:00:00Z</date>
+            <key>Platform</key>
+            <array><string>iOS</string></array>
+            <key>DeveloperCertificates</key>
+            <array><data>DummyCertificateData</data></array>
+            <key>Entitlements</key>
+            <dict>
+                <key>application-identifier</key>
+                <string>DUMMYTEAM.com.fairpoint.fairpoint</string>
+                <key>get-task-allow</key>
+                <true/>
+            </dict>
+            <key>Name</key>
+            <string>FairPoint AdHoc Profile</string>
+            <key>TeamIdentifier</key>
+            <array><string>DUMMYTEAM</string></array>
+            <key>TeamName</key>
+            <string>FairPoint Team</string>
+            <key>TimeToLive</key>
+            <integer>365</integer>
+            <key>UUID</key>
+            <string>DUMMY-UUID-1234-5678-ABCD</string>
+            <key>Version</key>
+            <integer>1</integer>
+        </dict>
+        </plist>
+        PROVEOF
+        
         # Create IPA manually
         mkdir -p Payload
         cp -r "$APP_PATH" Payload/
+        
+        # Embed the provisioning profile
+        cp embedded.mobileprovision Payload/Runner.app/embedded.mobileprovision
         
         # Verify Info.plist exists
         if [ ! -f "Payload/Runner.app/Info.plist" ]; then
@@ -135,6 +177,8 @@ jobs:
           ls -la Payload/Runner.app/
           exit 1
         fi
+        
+        echo "Embedded provisioning profile added"
         
         echo "Creating IPA..."
         zip -r FairPoint-adhoc.ipa Payload/
@@ -170,10 +214,32 @@ jobs:
     - name: Build Summary
       if: always()
       run: |
-        echo "⚠️  Note: This IPA uses ad-hoc signing (for development/testing)"
-        echo "📱 Installation options:"
-        echo "   1. Use iOS App Signer to re-sign with your certificate"
-        echo "   2. Use Diawi.com for OTA installation"
-        echo "   3. Use AltStore for sideloading"
-        echo "   4. For App Store: Use Codemagic with proper Apple Developer certificates"
+        echo "=========================================="
+        echo "iOS Build Completed"
+        echo "=========================================="
+        echo ""
+        echo "⚠️  IMPORTANT: This IPA is NOT properly signed!"
+        echo ""
+        echo "This build uses dummy certificates and provisioning profiles."
+        echo "It CANNOT be installed directly on devices."
+        echo ""
+        echo "📋 To install on a real device, you MUST re-sign it:"
+        echo ""
+        echo "Option 1: iOS App Signer (Mac)"
+        echo "  - Download iOS App Signer from GitHub"
+        echo "  - Import your Apple Developer certificate"
+        echo "  - Select your provisioning profile"
+        echo "  - Re-sign the downloaded IPA"
+        echo ""
+        echo "Option 2: Xcode Re-sign (Mac)"
+        echo "  - Extract IPA: unzip FairPoint-adhoc.ipa"
+        echo "  - Re-sign: codesign -f -s 'Your Certificate' Payload/Runner.app"
+        echo "  - Re-package: zip -r FairPoint-signed.ipa Payload/"
+        echo ""
+        echo "Option 3: Use Codemagic or similar CI/CD with real certificates"
+        echo "  - Configure Apple Developer account"
+        echo "  - Upload certificates and provisioning profiles"
+        echo "  - Build with proper signing"
+        echo ""
         echo "📖 See IOS_BUILD_GUIDE.md for detailed instructions"
+        echo "=========================================="
