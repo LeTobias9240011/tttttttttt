@@ -52,7 +52,7 @@ lib/firebase_options.dart
 *.env
 .env.*
 
-# iOS
+# iOS - Generated/Build files (ignore these)
 **/ios/Pods/
 **/ios/.symlinks/
 **/ios/Flutter/Flutter.framework
@@ -64,6 +64,8 @@ lib/firebase_options.dart
 **/ios/Flutter/flutter_assets/
 **/ios/ServiceDefinitions.json
 **/ios/Runner/GeneratedPluginRegistrant.*
+
+# iOS - Xcode user-specific files (ignore these)
 **/ios/**/*.mode1v3
 **/ios/**/*.mode2v3
 **/ios/**/*.moved-aside
@@ -75,11 +77,15 @@ lib/firebase_options.dart
 **/ios/**/.vagrant/
 **/ios/**/DerivedData/
 **/ios/**/Icon?
-**/ios/**/Pods/
 **/ios/**/.generated/
 **/ios/**/*.hmap
 **/ios/**/*.ipa
-**/ios/**/.symlinks/
+
+# iOS - Keep these files (DON'T ignore):
+# - Runner.xcodeproj/
+# - Runner.xcworkspace/
+# - Runner/
+# - Podfile
 
 # Web
 **/web/firebase-config.js
