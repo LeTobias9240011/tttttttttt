@@ -28,7 +28,14 @@ workflows:
           flutter packages pub get
       - name: Install pods
         script: |
-          find . -name "Podfile" -execdir pod install \;
+          cd ios
+          # Clean pod cache if needed
+          pod cache clean --all || true
+          # Retry pod install up to 3 times
+          for i in 1 2 3; do
+            echo "Pod install attempt $i..."
+            pod install --repo-update && break || sleep 10
+          done
       - name: Flutter build ipa
         script: |
           flutter build ipa --release \
