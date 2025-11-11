@@ -64,41 +64,33 @@ jobs:
         cd ios
         pod install
     
-    - name: Build iOS App with xcodebuild
+    - name: Build iOS App with Flutter
       run: |
-        cd ios
+        # Build iOS app using Flutter
+        flutter build ios \
+          --release \
+          --no-codesign \
+          --no-tree-shake-icons \
+          | tee ios/build.log
         
-        # Build the app
-        xcodebuild \
-          -workspace Runner.xcworkspace \
-          -scheme Runner \
-          -configuration Release \
-          -sdk iphoneos \
-          -destination 'generic/platform=iOS' \
-          -archivePath $PWD/build/Runner.xcarchive \
-          archive \
-          CODE_SIGN_IDENTITY="-" \
-          CODE_SIGNING_REQUIRED=NO \
-          CODE_SIGNING_ALLOWED=NO \
-          | tee build.log
-        
-        echo "Archive created at: $PWD/build/Runner.xcarchive"
-        ls -la $PWD/build/Runner.xcarchive/Products/Applications/ || echo "Applications folder not found"
+        echo "Build completed. Checking output..."
+        ls -la build/ios/iphoneos/ || echo "iphoneos directory not found"
     
-    - name: Export IPA from Archive
+    - name: Create IPA from Flutter build
       run: |
-        cd ios
-        
-        # Check if Runner.app exists in archive
-        if [ ! -d "build/Runner.xcarchive/Products/Applications/Runner.app" ]; then
-          echo "ERROR: Runner.app not found in archive!"
-          find build -name "*.app" -type d
+        # Check if Runner.app exists
+        if [ ! -d "build/ios/iphoneos/Runner.app" ]; then
+          echo "ERROR: Runner.app not found!"
+          echo "Searching for .app bundles..."
+          find build -name "*.app" -type d 2>/dev/null || echo "No .app bundles found"
+          echo "Directory structure:"
+          ls -R build/ios/ 2>/dev/null || echo "build/ios/ not found"
           exit 1
         fi
         
         # Create IPA manually
         mkdir -p Payload
-        cp -r build/Runner.xcarchive/Products/Applications/Runner.app Payload/
+        cp -r build/ios/iphoneos/Runner.app Payload/
         
         # Verify Info.plist exists
         if [ ! -f "Payload/Runner.app/Info.plist" ]; then
@@ -108,8 +100,7 @@ jobs:
         fi
         
         echo "Creating IPA..."
-        cd ..
-        zip -r FairPoint-adhoc.ipa ios/Payload/
+        zip -r FairPoint-adhoc.ipa Payload/
         
         # Verify IPA size
         IPA_SIZE=$(stat -f%z FairPoint-adhoc.ipa 2>/dev/null || stat -c%s FairPoint-adhoc.ipa)
@@ -121,7 +112,7 @@ jobs:
         fi
         
         echo "IPA created successfully!"
-        rm -rf ios/Payload
+        rm -rf Payload
     
     - name: Upload IPA
       uses: actions/upload-artifact@v4
